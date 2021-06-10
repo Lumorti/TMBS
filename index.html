@@ -8,8 +8,49 @@
 <title>TMBS</title>
 <style>
 	body {margin: 0; padding: 0; overflow: hidden;}
-	#view {background-color: #ffffff; position: absolute; height: 100vh; width: 100%;}
-	*:focus {outline: none;}
+	#centered {
+		margin: 0;
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		width: 70%;
+		text-align: center;
+		font-family: Arial, Helvetica, sans-serif;
+	}
+	input {
+		margin-top: 10px;
+		margin-left: 10px;
+	}
+	#buttonAdd, #buttonRemove {
+		margin-top: 10px;
+		padding-left: 10px;
+		padding-right: 10px;
+		font-size: 1.1em;
+	}
+	#buttonGo {
+		margin-top: 10px;
+		font-size: 1.1em;
+		padding: 5px;
+		padding-left: 30px;
+		padding-right: 30px;
+	}
+	#error {
+		margin-top: 10px;
+	}
+	#output {
+		margin-top: 20px;
+	}
+
+	#inputOper, #inputIters {
+		width: 5em;
+	}
+	.name {
+		width: 5em;
+	}
+	.val, #inputMainVal {
+		width: 10em;
+	}
 </style>
 <script>
 
@@ -37,13 +78,53 @@
 	  return !isNaN(val);
 	}
 
-	// Searching for the lowest error
-	var bestString = "";
-	var bestError = 100000;
-	var bestRes = 0;
-
 	// How many vars to get
-	var numVarsMax = 5;
+	var numVarsMax = 3;
+
+	var backupNames = [];
+	var backupVals = [];
+
+	// To prevent removal when increasing/decreasing number of inputs
+	function saveBackups(){
+		backupNames = [];
+		backupVals = [];
+		for (var i=1; i<numVarsMax+1; i++){
+			backupNames.push(document.getElementById("inputName" + i).value);
+			backupVals.push(document.getElementById("inputVal" + i).value);
+		}
+	}
+
+	// Restore the backs
+	function loadBackups(){
+		for (var i=1; i<numVarsMax+1; i++){
+			document.getElementById("inputName" + i).value = backupNames[i-1];
+			document.getElementById("inputVal" + i).value = backupVals[i-1];
+		}
+	}
+
+	// Called when the add button is pressed
+	function add(){
+		saveBackups();
+		numVarsMax += 1;
+		valsDiv = document.getElementById("namevals");
+		valsDiv.innerHTML += '\n<input class="val" type="number" id="inputVal' + numVarsMax + '" name="val' + numVarsMax + '">';
+		valsDiv.innerHTML += '\n<input class="name" type="text" id="inputName' + numVarsMax + '" name="name' + numVarsMax + '"><br>';
+		backupNames.push("");
+		backupVals.push("");
+		loadBackups();
+	}
+
+	// Called when the remove button is pressed
+	function remove(){
+		if (numVarsMax > 3){
+			saveBackups();
+			valsDiv = document.getElementById("namevals");
+			valsDiv.innerHTML = valsDiv.innerHTML.substring(0, valsDiv.innerHTML.lastIndexOf("\n"));
+			valsDiv.innerHTML = valsDiv.innerHTML.substring(0, valsDiv.innerHTML.lastIndexOf("\n"));
+			numVarsMax -= 1;
+			loadBackups();
+		}
+	}
 
 	// Function called when the main button is pressed
 	function run(){
@@ -52,7 +133,6 @@
 		var button = document.getElementById("buttonGo");
 		divFormula = document.getElementById("formula");
 		divError = document.getElementById("error");
-		divProgress = document.getElementById("progress");
 
 		// Stop the button whilst it's running
 		button.enabled = false;
@@ -63,10 +143,16 @@
 		// Attempts
 		var maxIters = parseFloat(document.getElementById("inputIters").value);
 		var maxOpsPer = parseFloat(document.getElementById("inputOper").value);
-		var thresh = 1e-6;
 
 		// Get the ideal
 		var ideal = parseFloat(document.getElementById("inputMainVal").value);
+		var numDecimals = ideal.toString().split(".")[1].length;
+		var thresh = 1*10**(-numDecimals);
+
+		// Searching for the lowest error
+		var bestString = "";
+		var bestError = 100000;
+		var bestRes = 0;
 
 		// Get the names and values
 		var names = ["1"];
@@ -85,7 +171,7 @@
 		}
 
 		// The operators available
-		var ops = ["+", "-", "/", "*"];
+		var ops = ["+", "-", "/", "*", "**"];
 
 		// Set these vars
 		for (var i=0; i<names.length; i++){
@@ -98,16 +184,16 @@
 		// Start with fewer operations
 		for (var opsPer=1; opsPer<maxOpsPer+1; opsPer++){
 
+			// Only calculate this once per
+			var perms = combRep(names, opsPer+1);
+
 			// Keep trying
-			for (var iter=0; iter<maxIters*opsPer; iter++){
+			for (var iter=0; iter<maxIters; iter++){
 
 				// Skip if we've converged
 				if (bestError < thresh){
 					break;
 				}
-
-				// TODO progress bar type thing
-				divProgress.innerHTML = "trying " + opsPer + " operations, iteration " + iter;
 
 				// Generate a random expression
 				var expr = ["E"];
@@ -141,14 +227,15 @@
 				}
 
 				// Loop over variable permutations
-				var perms = combRep(names, opsPer+1);
 				for (var j=0; j<perms.length; j++){
 
 					// Create the eval string
 					var evalString = "";
+					next = 0;
 					for (var k=0; k<expr.length; k++){
 						if (expr[k] == "E"){
-							evalString += perms[j].pop();
+							evalString += perms[j][next];
+							next += 1;
 						} else {
 							evalString += expr[k];
 						}
@@ -173,7 +260,7 @@
 
 		// Output the best
 	    divFormula.innerHTML = "Best guess: " + bestString;
-	    divError.innerHTML = "with value: " + bestRes + " (difference of " + bestError + ")";
+	    divError.innerHTML = "With value: " + bestRes.toFixed(numDecimals) + " (difference of " + bestError.toFixed(numDecimals) + ")";
 
 		// Allow the button again
 		button.enabled = true;
@@ -183,33 +270,33 @@
 </script>
 </head>
 <body>
-	<h1 id="title">This Must Be Something</h1>
-	<div id="form">
-		<label for="mainVal">The value you want to simplify:</label>
-		<input type="text" id="inputMainVal" name="mainVal" value="0.1667"><br>
-		<label for="name1">The variables you want to use and their values (or just values):</label><br>
-		<input type="text" id="inputName1" name="name1" value="d">
-		<input type="text" id="inputVal1" name="val1" value="6"><br>
-		<input type="text" id="inputName2" name="name2">
-		<input type="text" id="inputVal2" name="val2"><br>
-		<input type="text" id="inputName3" name="name3">
-		<input type="text" id="inputVal3" name="val3"><br>
-		<input type="text" id="inputName4" name="name4">
-		<input type="text" id="inputVal4" name="val4"><br>
-		<input type="text" id="inputName5" name="name5">
-		<input type="text" id="inputVal5" name="val5"><br>
-		<label for="oper">Max operations:</label>
-		<input type="text" id="inputOper" name="oper" value="5"><br>
-		<label for="iters">Max iterations:</label>
-		<input type="text" id="inputIters" name="iters" value="100"><br>
-		<button id="buttonGo" onclick="run()">Go</button>
-	</div>
-	<div id="output">
-		<div id="progress">
+	<div id="centered">
+		<h1 id="title">This Must Be Something</h1>
+		<div id="form">
+			<label for="mainVal">Value to simplify:</label>
+			<input type="number" id="inputMainVal" name="mainVal" value="12.071068"><br><br>
+			<label>Values to use (and optional label):</label><br>
+			<div id="namevals">
+				<input class="val" type="number" id="inputVal1" name="val1" value="1.41421356237">
+				<input class="name" type="text" id="inputName1" name="name1" value="rt2"><br>
+				<input class="val" type="number" id="inputVal2" name="val2" value="5">
+				<input class="name" type="text" id="inputName2" name="name2" value="n"><br>
+				<input class="val" type="number" id="inputVal3" name="val3" value="">
+				<input class="name" type="text" id="inputName3" name="name3" value=""><br>
+			</div>
+			<button id="buttonRemove" onclick="remove()">-</button>
+			<button id="buttonAdd" onclick="add()">+</button><br>
+			<label for="oper">Max operations:</label>
+			<input type="number" id="inputOper" name="oper" value="3"><br>
+			<label for="iters">Max iterations:</label>
+			<input type="number" id="inputIters" name="iters" value="200"><br>
+			<button id="buttonGo" onclick="run()">Solve</button>
 		</div>
-		<div id="formula">
-		</div>
-		<div id="error">
+		<div id="output">
+			<div id="formula">
+			</div>
+			<div id="error">
+			</div>
 		</div>
 	</div>
 </body>
