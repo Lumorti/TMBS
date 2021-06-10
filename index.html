@@ -42,6 +42,9 @@
 	var bestError = 100000;
 	var bestRes = 0;
 
+	// How many vars to get
+	var numVarsMax = 5;
+
 	// Function called when the main button is pressed
 	function run(){
 
@@ -55,7 +58,6 @@
 		button.enabled = false;
 
 		// How many vars to get
-		var numVarsMax = 5;
 		var numVars = 0;
 		
 		// Attempts
@@ -99,10 +101,12 @@
 			// Keep trying
 			for (var iter=0; iter<maxIters*opsPer; iter++){
 
+				// Skip if we've converged
 				if (bestError < thresh){
 					break;
 				}
 
+				// TODO progress bar type thing
 				divProgress.innerHTML = "trying " + opsPer + " operations, iteration " + iter;
 
 				// Generate a random expression
@@ -150,7 +154,10 @@
 						}
 					}
 
+					// Evaluate this expression
 					var res = eval(evalString);
+
+					// See if it's the new best
 					var error = Math.abs(res - ideal);
 					if (error < bestError){
 						bestError = error;
