@@ -58,22 +58,20 @@
 </style>
 <script>
 
-	// Combinations with repeats https://stackoverflow.com/questions/32543936/combination-with-repetition
-	function combRep(arr, l) {
-	  if(l === void 0) l = arr.length; // Length of the combinations
-	  var data = Array(l),             // Used to store state
-		  results = [];                // Array of results
-	  (function f(pos, start) {        // Recursive function
-		if(pos === l) {                // End reached
-		  results.push(data.slice());  // Add a copy of data to results
-		  return;
+	// Get every possible permutation of each combination 
+	function getPerms(arr, l){
+		var whole = [];
+		var current = 0;
+		for (var i=0; i<arr.length**l; i++){
+			var indices = current.toString(arr.length).padStart(l, '0');
+			var newVal = [];
+			for (var j=0; j<l; j++){
+				newVal.push(arr[parseInt(indices[j])]);
+			}
+			whole.push(newVal);
+			current += 1;
 		}
-		for(var i=start; i<arr.length; ++i) {
-		  data[pos] = arr[i];          // Update data
-		  f(pos+1, i);                 // Call f recursively
-		}
-	  })(0, 0);                        // Start at index 0
-	  return results;                  // Return results
+		return whole;
 	}
 
 	// Is this var a float
@@ -84,7 +82,6 @@
 
 	// How many vars to get
 	var numVarsMax = 3;
-
 	var backupNames = [];
 	var backupVals = [];
 
@@ -159,8 +156,8 @@
 		var bestRes = 0;
 
 		// Get the names and values
-		var names = ["1"];
-		var vals = [1];
+		var names = [];
+		var vals = [];
 		for (var i=1; i<numVarsMax+1; i++){
 			var name = document.getElementById("inputName" + i).value;
 			var val = document.getElementById("inputVal" + i).value;
@@ -175,7 +172,7 @@
 		}
 
 		// The operators available
-		var ops = ["+", "-", "/", "*", "**"];
+		var ops = ["+", "-", "/", "*"];
 
 		// Set these vars
 		for (var i=0; i<names.length; i++){
@@ -186,10 +183,10 @@
 		}
 		
 		// Start with fewer operations
-		for (var opsPer=1; opsPer<maxOpsPer+1; opsPer++){
+		for (var opsPer=0; opsPer<maxOpsPer+1; opsPer++){
 
-			// Only calculate this once per
-			var perms = combRep(names, opsPer+1);
+			// Only calculate this once per 
+			var perms = getPerms(names, opsPer+1);
 
 			// Keep trying
 			for (var iter=0; iter<maxIters; iter++){
@@ -230,15 +227,16 @@
 
 				}
 
-				// Loop over variable permutations
+				// For each permutation
 				for (var j=0; j<perms.length; j++){
+					var perm = perms[j];
 
 					// Create the eval string
 					var evalString = "";
 					next = 0;
 					for (var k=0; k<expr.length; k++){
 						if (expr[k] == "E"){
-							evalString += perms[j][next];
+							evalString += perm[next];
 							next += 1;
 						} else {
 							evalString += expr[k];
@@ -293,7 +291,7 @@
 			<label for="oper">Max operations:</label>
 			<input type="number" id="inputOper" name="oper" value="3"><br>
 			<label for="iters">Max iterations:</label>
-			<input type="number" id="inputIters" name="iters" value="200"><br>
+			<input type="number" id="inputIters" name="iters" value="20"><br>
 			<button id="buttonGo" onclick="run()">Solve</button>
 		</div>
 		<div id="output">
